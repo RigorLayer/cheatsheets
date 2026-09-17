@@ -1,5 +1,7 @@
 # Codex CLI Cheat Sheet
 
+Checked against official OpenAI documentation on **September 17, 2026**. Model and feature availability depends on your CLI release, sign-in method, plan, and workspace policy.
+
 ## Install & Login
 
 Install Codex CLI:
@@ -38,21 +40,31 @@ Switch models and reasoning effort mid-session without losing context.
 Command line:
 ```bash
 codex --model gpt-5.6
+codex -m gpt-6-astra "Implement and verify this feature end to end"
 codex -m gpt-5.6-terra "Review this repository"
 codex -m gpt-5.6-sol -c model_reasoning_effort='"high"'
 codex exec -m gpt-5.6-luna -c model_reasoning_effort='"low"' "Review this diff"
 ```
 
-| Model | Cost | Best For |
+| Model | Position | Best For |
 |-------|------|----------|
-| **GPT-5.6 Sol** (`gpt-5.6-sol`, alias `gpt-5.6`) | highest | Complex coding, computer use, research, cybersecurity, polished deliverables |
+| **GPT-6 Astra** (`gpt-6-astra`) | strongest capability | Difficult workflows across code, apps, and research; sustained reasoning and tool use |
+| **GPT-5.6 Sol** (`gpt-5.6-sol`, alias `gpt-5.6`) | strongest in GPT-5.6 | Complex coding, computer use, research, cybersecurity, polished deliverables |
 | **GPT-5.6 Terra** (`gpt-5.6-terra`) | balanced | Everyday implementation, debugging, review, and tool-heavy work |
 | **GPT-5.6 Luna** (`gpt-5.6-luna`) | lowest in family | Fast, repeatable tasks such as extraction, classification, and transformation |
-| **GPT-5.5** (`gpt-5.5`) | previous generation | Existing complex coding and research workflows |
 | **GPT-5.3 Codex Spark** (`gpt-5.3-codex-spark`) | preview | Near-instant, text-only coding iteration; ChatGPT Pro only |
-| **GPT-5.4 / GPT-5.4 Mini** | lower-cost alternatives | Professional work or responsive coding and subagents |
 
-**Tip:** Start with Sol when unsure, use Terra as the everyday workhorse, and choose Luna when the task is clear and repeatable. Availability depends on your plan, workspace, and model provider.
+**Tip:** Use Astra for the hardest end-to-end work, Sol for depth and polish, Terra for everyday coding, and Luna for clear, repeatable tasks. Check `/model` for the choices available to your account.
+
+**Model retirements with ChatGPT sign-in**
+
+| Old model | Status | Replacement |
+|-----------|--------|-------------|
+| `gpt-5.5` | Retires October 14, 2026 | `gpt-5.6-sol` |
+| `gpt-5.4` | Retired August 31, 2026 | `gpt-5.6-terra` |
+| `gpt-5.4-mini` | Retired August 31, 2026 | `gpt-5.6-luna` |
+
+Update saved configs, custom agents, scheduled tasks, and scripts. These retirements do not apply to the OpenAI API or Codex using your own API key. GPT-5.2 and GPT-5.3-Codex are also deprecated in Codex with ChatGPT sign-in. See [Models](https://learn.chatgpt.com/docs/models) for current availability.
 
 Configure the default in `~/.codex/config.toml`:
 
@@ -76,7 +88,7 @@ model_reasoning_summary = "auto"
 | `high` | Debugging, multi-file implementation, careful refactors |
 | `xhigh` | Hard design/debugging work when the selected model supports it |
 
-GPT-5.6 also exposes two top-end choices in the model picker:
+Supported models and clients can also expose these top-end choices:
 
 | Mode | Behavior |
 |------|----------|
@@ -84,6 +96,8 @@ GPT-5.6 also exposes two top-end choices in the model picker:
 | **Ultra** | Uses subagents to split a complex task into parallel workstreams |
 
 **Tip:** Use the lowest effort that produces the result you need. Most tasks do not need Max or Ultra, and Ultra can increase usage quickly.
+
+The configuration reference lists the effort values above; the subagent guide also documents model-dependent `max` and `ultra`. Check your model picker and client support before using those overrides. See [Subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents).
 
 
 
@@ -100,7 +114,7 @@ Main cost levers:
 
 | Lever | Lower Cost | Higher Capability |
 |-------|------------|-------------------|
-| Model | GPT-5.6 Luna / GPT-5.4 Mini | GPT-5.6 Sol |
+| Model | GPT-5.6 Luna / Terra | GPT-5.6 Sol / GPT-6 Astra |
 | Reasoning | `minimal`, `low`, or `medium` | `high`, `xhigh`, Max, or Ultra |
 | Context | Compact and reference fewer files | Large repo scans and long history |
 | Subagents | Single-threaded run | Parallel workers and explorers |
@@ -167,6 +181,17 @@ Codex CLI:
 * Use `/side` for quick side questions that should not derail the main thread
 
 **Tip:** When a task gets long, ask Codex to write a short handoff plan into a repo file, then start a fresh session that references that file.
+
+**Experimental Astra context management**
+
+On supported clients, ChatGPT Plus and Pro users can opt in to notes across context windows and search of earlier messages and tool results in the same task:
+
+```toml
+# ~/.codex/config.toml; start a new task after enabling
+features.context_management.experimental_mode = true
+```
+
+This experiment is off by default and unavailable with Business, Enterprise, or API-key sign-in at launch. It is separate from cross-session memories. See [Models](https://learn.chatgpt.com/docs/models#experimental-context-management).
 
 
 
@@ -373,12 +398,13 @@ Codex CLI:
 Shell commands:
 ```bash
 codex resume             # Open session picker
-codex resume --last      # Continue most recent session
+codex resume --last      # Most recent session in this directory
+codex resume --last --all # Most recent session across directories
 codex fork               # Fork from a previous session
 codex archive <SESSION>  # Hide a saved session without deleting it
 codex unarchive <SESSION>
 codex app .              # Open this workspace in the ChatGPT desktop app
-codex apply              # Apply the latest diff from a Codex agent
+codex apply              # Apply the latest cloud-task diff locally
 ```
 
 **Tip:** Use `/diff` before every commit. For persistent rollback, prefer small git commits over relying on session history.
@@ -397,10 +423,12 @@ Headless:
 codex review --uncommitted
 codex review --base main
 codex review --commit abc123
-codex review --base main "Focus on auth, data loss, and missing tests"
+codex review "Review against main; focus on auth, data loss, and missing tests"
 ```
 
 `codex review` runs a non-interactive review agent against local changes, a base branch, or a commit.
+
+**Tip:** Choose exactly one of `--uncommitted`, `--base`, `--commit`, or a custom prompt; they cannot be combined. `/review` uses the current session model unless `review_model` is configured.
 
 **Tip:** Review after implementation but before cleanup. The second agent is best at catching behavioral risks while the diff still reflects the actual change.
 
@@ -454,6 +482,8 @@ Command line image input:
 codex -i screenshot.png "Implement this design"
 codex exec -i error.png "Explain this stack trace"
 ```
+
+Use `/ide` to include available open files, the current selection, and other editor context in the next prompt.
 
 **Tip:** Explicit references reduce unnecessary repo scanning and make the agent's first turn much more reliable.
 
@@ -524,6 +554,7 @@ Shell:
 codex plugin list
 codex plugin add <plugin@marketplace>
 codex plugin marketplace list
+codex plugin list --json
 codex mcp list
 codex mcp add context7 -- npx -y @upstash/context7-mcp
 ```
@@ -613,6 +644,8 @@ one for security, one for correctness, one for tests.
 Wait for all results and summarize.
 ```
 
+Applicable `AGENTS.md` or skill instructions can also request delegation. Subagents inherit the parent's model and reasoning effort unless you explicitly select alternatives or configure agent defaults.
+
 Built-in agent roles:
 
 | Agent | Best For |
@@ -672,6 +705,8 @@ Popular MCP servers:
 
 **Tip:** Use OAuth-enabled servers with `codex mcp login <server-name>`.
 
+**Removed:** `codex mcp-server` and the standalone `codex-mcp-server` binary were removed on September 5, 2026. Integrations should use `codex app-server`, which is experimental and not supported for production workloads. Connecting Codex to external servers with `codex mcp` remains supported. See the [changelog](https://learn.chatgpt.com/docs/changelog).
+
 
 
 ## Hooks
@@ -711,7 +746,7 @@ Example - run a check after each turn stops:
 }
 ```
 
-Useful hook events include `SessionStart`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `UserPromptSubmit`, and `Stop`.
+Useful hook events include `SessionStart`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `UserPromptSubmit`, and `Stop`. Use `PreCompact` / `PostCompact` around compaction, `SubagentStart` / `SubagentStop` for delegated work, and `Interrupt` / `SessionEnd` for main-thread interruption and exit.
 
 **Tip:** Project-local hooks load only after you trust the project. Non-managed command hooks must be reviewed and trusted before they run.
 
@@ -781,7 +816,30 @@ TUI customization:
 /vim          # Toggle Vim editing in the composer
 /raw          # Toggle raw scrollback for easier selection and copying
 /personality  # Choose friendly, pragmatic, or none when supported
+/pets         # Choose a terminal pet; /pets off hides it
 ```
+
+
+
+## Diagnostics & Feature Flags
+
+Inspect the installation and model catalog:
+
+```bash
+codex doctor                 # Local installation and runtime health report
+codex debug models           # Model catalog as JSON
+codex debug models --bundled # Catalog shipped with this binary, without refresh
+```
+
+In the TUI:
+
+```text
+/debug-config  # Config layers and effective policy constraints
+/experimental  # Toggle experimental features; restart if requested
+/mcp verbose   # Detailed server diagnostics
+```
+
+**Tip:** Update Codex before investigating a missing command. Model catalogs and workspace policy can hide unavailable choices; `/fast` appears only when the active model advertises a Fast tier. See the [CLI reference](https://learn.chatgpt.com/docs/developer-commands?surface=cli).
 
 
 
@@ -807,10 +865,10 @@ Most Claude Code habits transfer directly, but the filenames and extension layou
 Use the guided importer from a local TUI session:
 
 ```text
-/import    # Select Claude Code setup, project files, or recent chats to import
+/import    # Choose Claude Code or Cursor, then select artifacts to import
 ```
 
-`/import` is unavailable while a task is running, in remote sessions, and while connected to the local app-server daemon.
+The importer supports Claude Code and Cursor setup, project files, and recent chats. Chat discovery includes up to 50 chats from the last 30 days. `/import` is unavailable while a task is running, in remote sessions, and while connected to the local app-server daemon.
 
 | Claude Code | Codex CLI |
 |-------------|-----------|
@@ -867,5 +925,5 @@ Suggested manual migration steps:
 
 ---
 
-Codex CLI Cheat Sheet version 1.3
+Codex CLI Cheat Sheet version 1.4
 © 2026 Andrei Smirnov — [github.com/pinebit](https://github.com/pinebit)
