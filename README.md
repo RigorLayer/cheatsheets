@@ -55,3 +55,8 @@ Each command removes only that sheet's generated artifacts. There is no combined
 Edit the relevant `cheatsheet.md` and follow the root and sheet-specific `AGENTS.md` instructions. Rebuild the affected sheet and review its PDF and validation report. Verify product details against the [official Claude Code documentation](https://code.claude.com/docs/en/overview) or [official Codex documentation](https://developers.openai.com/codex/).
 
 These files were copied from the `books` repository. Future work in this repository is independent; changes do not synchronize back automatically.
+
+## License
+
+- **Cheat sheet content** (`*/cheatsheet.md`, `*/style.css`): [CC BY 4.0](LICENSE-CONTENT) — free to share and adapt with attribution.
+- **Code and tooling** (`render.py`, `Makefile`, etc.): [MIT](LICENSE) — free to use, modify, and distribute.
