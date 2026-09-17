@@ -1,4 +1,4 @@
-# RL Cheat Sheets
+# AI Agents Cheat Sheets
 
 Printable Claude Code and Codex cheat sheets, maintained and built independently.
 
