@@ -2,6 +2,8 @@
 
 ## Models
 
+Verified against official documentation on **September 17, 2026** (CLI v2.1.274).
+
 Claude Code:
 ```text
 /model [haiku|sonnet|opus|fable|best|opusplan]
@@ -14,20 +16,15 @@ Switch models on-the-fly without losing context.
 | **Haiku 4.5** | cheapest | Fast screening, data extraction, classification, simple coding tasks |
 | **Sonnet 5** | balanced | Balanced coding, writing, code review, refactoring |
 | **Opus 5** | advanced | Complex debugging, deep research, architectural decisions, advanced problem-solving |
-| **Fable 5** | premium | Hardest long-horizon agentic work and the most demanding reasoning |
+| **Fable 5.1** | premium | Hardest long-horizon agentic work and the most demanding reasoning |
 
-The `opus` alias resolves to Opus 5 (requires v2.1.219 or later); earlier versions stay selectable by full name, e.g. `claude-opus-4-8`. `best` picks Fable 5 where your organization has access to it, otherwise the latest Opus. `opusplan` plans with Opus, then switches to Sonnet for execution.
+On the Anthropic API, `opus` selects Opus 5 and `sonnet` selects Sonnet 5; third-party provider aliases can lag. Pin a full model ID when version matters. `opusplan` plans with Opus, then executes with Sonnet.
 
-Claude Code:
-```text
-/fast
-```
+`fable` selects **Fable 5.1** from v2.1.257, except through the Claude apps gateway, where it still selects Fable 5. Use `claude-fable-5-1` explicitly if your gateway serves it. `best` follows `fable` when available, otherwise `opus`.
 
-Toggles fast mode (Opus 5 and Opus 4.8 only): up to 2.5x faster output at $10/$50 per MTok — same model, no downgrade. A `↯` icon marks it active.
+**Tip:** `/model` saves your choice for future sessions. Press `s` in its picker for this session only, or launch with `claude --model fable`.
 
-**Tip:** On subscription plans fast mode bills from usage credits, not your plan allowance, and the first toggle re-bills the whole conversation at fast-mode rates. Enable it at the start of a session, not mid-conversation.
-
-## Cost & Usage Control
+## Cost & Usage Control {: .page-break-before }
 
 Claude Code:
 ```text
@@ -39,7 +36,18 @@ Claude Code:
 
 The three main cost levers: model, effort and context (see further).
 
-**Tip:** `HIGH/XHIGH/MAX` effort bills thinking tokens separately — they can exceed the response cost on complex tasks.
+**Tip:** Higher effort can increase token use. Check actual usage rather than assuming the same effort label has the same cost across models.
+
+**Fable billing:** Some plans require usage credits. Interactive sessions ask for consent; `claude -p` and the Agent SDK can bill credits without that prompt. Check the model picker and your billing controls before automation.
+
+Claude Code:
+```text
+/fast
+```
+
+Toggles fast mode (Opus 5 and Opus 4.8 only): up to 2.5x faster output at $10/$50 per MTok — same model, no downgrade. A `↯` icon marks it active.
+
+**Tip:** On subscription plans fast mode bills from usage credits, not your plan allowance. Switching mid-session charges the full context at fast-mode uncached-input rates on the next request; earlier requests are not retroactively re-billed.
 
 ## Thinking Effort {: .page-break-before }
 
@@ -82,7 +90,8 @@ claude -p "List imports in src/index.ts" --output-format json | jq '.result'
 **Tips:**
 * Output goes to `stdout` — use pipes and redirects
 * `--output-format stream-json` — stream events in real time for long-running jobs
-* `--allowedTools` — restrict which tools Claude can use (e.g., block `Write` in a review-only pipeline)
+* `--allowedTools` — allow matching tools to run without approval; this is not a tool allowlist
+* `--tools "Read,Grep,Glob"` — limit built-in tools to reads; add `--disallowedTools "mcp__*"` to exclude MCP tools too
 * Combine with `-w` — headless + worktree keeps automation fully isolated from your working tree
 
 ## Context Management {: .page-break-before }
@@ -94,14 +103,13 @@ Claude Code:
 /compact [instructions]  # Summarize conversation to free up context
 ```
 
-**Critical insight:** Advertised context window ≠ Effective reasoning window. Quality degrades significantly with long contexts ("Context Rot" and "Lost In The Middle" problems).
+**Critical insight:** A large context window is capacity, not a guarantee that every detail gets equal attention. Keep important requirements easy to find.
 
-* **Opus & Fable**: advertised window 1M tokens, but effective reasoning window ~200K–500K tokens
 * Keep active context tight — remove old conversation threads, unused MCPs, and dormant agents
-* Always use `/compact [instructions]` instead of auto-compaction to maintain relevance
-* Optimize `CLAUDE.md` files — they are cheap due to prompt caching
+* Use `/compact [instructions]` at a useful milestone to focus the summary
+* Keep `CLAUDE.md` concise — cached instructions still occupy context
 
-**Tip:** Prevent automatic compaction. Transfer state between sessions via plan files.
+**Tip:** Automatic compaction helps long tasks continue. Keep durable decisions and next steps in plan files so you can also start a fresh session deliberately.
 
 ## Project Instructions {: .page-break-before }
 
@@ -117,11 +125,10 @@ Claude Code:
 
 **Tip:** Add the official `claude-md-improver` skill and use it.
 
-**Tip:** Prefix any message with `#` and Claude will save it as a persistent rule to `CLAUDE.md` without treating it as a task.
+**Tip:** Ask Claude explicitly to update `CLAUDE.md`, then review the change, or edit it through `/memory`.
 
 ```text
-# always use pnpm, never npm
-# run tests after every code change
+Add to CLAUDE.md: use pnpm and run tests after code changes.
 ```
 
 **What belongs in CLAUDE.md**
@@ -169,6 +176,25 @@ Custom commands are now skills: `.claude/commands/deploy.md` and `.claude/skills
 **Tip:** Explore public repositories like [skills.sh](https://skills.sh).
 
 **Tip:** Use the official `skill-creator` skill to create and manage your own skills and agents.
+
+## Review & CLI Updates {: .page-break-before }
+
+```bash
+claude --version           # Check the installed client
+claude update              # Update Claude Code
+claude ultrareview 123 --json  # Cloud review; findings to stdout
+```
+
+Claude Code:
+```text
+/code-review high          # Review without requesting fixes
+/code-review --fix         # Apply review findings
+/config --help             # Discover direct settings keys
+```
+
+Reviewing and publishing are separate actions: `/code-review --comment` posts findings; `claude ultrareview --post` posts to a GitHub PR. Omit posting flags when you only want a report.
+
+**Recent changes:** v2.1.274 adds `CLAUDE_CODE_MCP_STARTUP_WAIT_MS` to bound the initial MCP wait in headless mode (`0` skips waiting). Use it only when the first turn can proceed without still-connecting tools. The release also fixes goals lost after resuming compacted sessions.
 
 ## Background Agents {: .page-break-before }
 
@@ -401,7 +427,7 @@ claude mcp remove context7
 claude mcp list
 ```
 
-**Tip:** — add `--scope project` to store in `.mcp.json` (checked into repo, shared with team); default is user-level (`~/.claude/`).
+**Tip:** Add `--scope project` to share configuration through `.mcp.json`. The default is `local` (only you, in this project); `--scope user` makes it available across your projects.
 
 **Popular, battle-tested MCP servers**
 
@@ -420,12 +446,12 @@ claude mcp list
 |----------|--------|
 | `@` | File picker (fuzzy search) |
 | `!command` | Run shell command inline |
-| `#` | Save a rule to CLAUDE.md |
-| Esc×2 | Rewind to previous state |
+| Esc×2 | Clear a draft; with empty input, open rewind |
 | Shift+Tab | Cycle modes (normal / plan / accept-edits / auto) |
 | Ctrl+G | Open external editor |
 | Ctrl+L | Clear screen |
-| Ctrl+C | Exit (when input empty) |
+| Ctrl+C | Interrupt; when idle, clear input, then press again to exit |
+| Ctrl+O | Toggle detailed transcript |
 
 **Tip:** Run `/keybindings` to open your shortcuts file and remap keys, including two-key chords.
 
@@ -443,7 +469,7 @@ Patterns that consistently produce better results:
 
 ## Beyond the Terminal {: .page-break-before }
 
-The same engine runs on every surface, and your `CLAUDE.md` files, settings, and MCP servers travel with you.
+Claude Code runs on multiple surfaces. Repository instructions travel with the repository; local settings, credentials, and MCP configurations may need separate setup in cloud environments.
 
 | Surface | Best for |
 |---|---|
@@ -469,6 +495,9 @@ claude --cloud    # Start local, hand off to web and mobile
 **Documentation**
 
 * [Claude Code Docs](https://code.claude.com/docs) — official Anthropic documentation
+* [Models](https://code.claude.com/docs/en/model-config) — aliases, effort, and billing caveats
+* [CLI reference](https://code.claude.com/docs/en/cli-reference) and [commands](https://code.claude.com/docs/en/commands)
+* [Changelog](https://code.claude.com/docs/en/changelog) — client releases and fixes
 
 **General**
 
@@ -491,5 +520,5 @@ claude --cloud    # Start local, hand off to web and mobile
 
 ---
 
-Claude Code Cheat Sheet version 1.6
+Claude Code Cheat Sheet version 1.7
 © 2026 Andrei Smirnov — [github.com/pinebit](https://github.com/pinebit)
